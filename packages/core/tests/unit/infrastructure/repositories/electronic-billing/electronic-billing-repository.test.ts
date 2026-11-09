@@ -333,6 +333,7 @@ describe("ElectronicBillingRepository", () => {
                 FchVtoPago: "20231031",
                 MonId: "PES",
                 MonCotiz: 1,
+                CanMisMonExt: undefined,
                 CondicionIVAReceptorId: 1,
                 Tributos: undefined,
                 Iva: undefined,
@@ -341,7 +342,6 @@ describe("ElectronicBillingRepository", () => {
                 Opcionales: undefined,
                 CAEA: "12345678901234",
                 PeriodoAsoc: undefined,
-                CbteFchHsGen: undefined,
               },
             ],
           },
@@ -590,6 +590,80 @@ describe("ElectronicBillingRepository", () => {
       );
     });
 
+    it("should map PeriodoAsoc when provided (NC/ND)", async () => {
+      const mockVoucher = {
+        toDTO: jest.fn().mockReturnValue({
+          ...data,
+          PtoVta: 1,
+          CbteTipo: 3,
+          CbteDesde: 1,
+          CbteHasta: 1,
+          PeriodoAsoc: { FchDesde: "20240101", FchHasta: "20240131" },
+        }),
+      } as never;
+
+      mockSoapClient.FECAESolicitarAsync.mockResolvedValue([
+        {
+          FECAESolicitarResult: {
+            FeDetResp: { FECAEDetResponse: [{ Resultado: "A" }] },
+          },
+        },
+      ] as never);
+
+      await repository.createVoucher(mockVoucher);
+
+      expect(mockSoapClient.FECAESolicitarAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          FeCAEReq: expect.objectContaining({
+            FeDetReq: {
+              FECAEDetRequest: [
+                expect.objectContaining({
+                  PeriodoAsoc: { FchDesde: "20240101", FchHasta: "20240131" },
+                }),
+              ],
+            },
+          }),
+        }),
+      );
+    });
+
+    it("should omit PeriodoAsoc when null", async () => {
+      const mockVoucher = {
+        toDTO: jest.fn().mockReturnValue({
+          ...data,
+          PtoVta: 1,
+          CbteTipo: 3,
+          CbteDesde: 1,
+          CbteHasta: 1,
+          PeriodoAsoc: null,
+        }),
+      } as never;
+
+      mockSoapClient.FECAESolicitarAsync.mockResolvedValue([
+        {
+          FECAESolicitarResult: {
+            FeDetResp: { FECAEDetResponse: [{ Resultado: "A" }] },
+          },
+        },
+      ] as never);
+
+      await repository.createVoucher(mockVoucher);
+
+      expect(mockSoapClient.FECAESolicitarAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          FeCAEReq: expect.objectContaining({
+            FeDetReq: {
+              FECAEDetRequest: [
+                expect.objectContaining({
+                  PeriodoAsoc: undefined,
+                }),
+              ],
+            },
+          }),
+        }),
+      );
+    });
+
     it("should return CAE and CAEFchVto when voucher is approved (Resultado A)", async () => {
       mockSoapClient.FECAESolicitarAsync.mockResolvedValue([
         {
@@ -638,6 +712,37 @@ describe("ElectronicBillingRepository", () => {
       const result = await repository.getVoucherInfo(1, 1, 1);
 
       expect(result).toBeNull();
+    });
+
+    it("should return the ARCA errors when there is no ResultGet", async () => {
+      mockSoapClient.FECompConsultarAsync.mockResolvedValue([
+        {
+          FECompConsultarResult: {
+            ResultGet: undefined,
+            Errors: {
+              Err: [
+                {
+                  Code: 602,
+                  Msg: "No existen datos en nuestros registros para los parametros ingresados.",
+                },
+              ],
+            },
+          },
+        },
+      ] as never);
+
+      const result = await repository.getVoucherInfo(1, 1, 1);
+
+      expect(result).toEqual({
+        errors: {
+          err: [
+            {
+              code: 602,
+              msg: "No existen datos en nuestros registros para los parametros ingresados.",
+            },
+          ],
+        },
+      });
     });
 
     it("should return mapped voucher info when ResultGet is present", async () => {

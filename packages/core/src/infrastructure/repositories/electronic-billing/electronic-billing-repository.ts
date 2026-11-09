@@ -149,6 +149,7 @@ export class ElectronicBillingRepository
       CbtesAsoc: voucherData.CbtesAsoc
         ? { CbteAsoc: voucherData.CbtesAsoc }
         : undefined,
+      PeriodoAsoc: voucherData.PeriodoAsoc ?? undefined,
       Compradores: voucherData.Compradores
         ? { Comprador: voucherData.Compradores }
         : undefined,
@@ -246,7 +247,10 @@ export class ElectronicBillingRepository
       const result = output.FECompConsultarResult;
       const voucherInfo = mapVoucherInfo(result);
       if (!voucherInfo) {
-        return null;
+        // ARCA answers without ResultGet when the voucher does not exist (602) and when the
+        // request is invalid (10202, 10204...): keep the errors so the caller can tell them apart
+        const errors = this.mapErrors(result.Errors);
+        return errors ? { errors } : null;
       }
       return {
         ...voucherInfo,

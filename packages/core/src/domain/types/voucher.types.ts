@@ -1,3 +1,52 @@
+/** Códigos `CbteTipo` de WSFE usados por el SDK. Catálogo completo: `getVoucherTypes()`. */
+export const VoucherTypes = {
+  FACTURA_A: 1,
+  NOTA_DEBITO_A: 2,
+  NOTA_CREDITO_A: 3,
+  RECIBO_A: 4,
+  FACTURA_B: 6,
+  NOTA_DEBITO_B: 7,
+  NOTA_CREDITO_B: 8,
+  RECIBO_B: 9,
+  FACTURA_C: 11,
+  NOTA_DEBITO_C: 12,
+  NOTA_CREDITO_C: 13,
+  RECIBO_C: 15,
+  BIENES_USADOS: 49,
+  FACTURA_M: 51,
+  NOTA_DEBITO_M: 52,
+  NOTA_CREDITO_M: 53,
+  RECIBO_M: 54,
+} as const;
+
+/** Clase fiscal A/B/C/M: factura, ND, NC y recibo de esa letra. */
+export const VoucherTypesByClass: Record<"A" | "B" | "C" | "M", number[]> = {
+  A: [
+    VoucherTypes.FACTURA_A,
+    VoucherTypes.NOTA_DEBITO_A,
+    VoucherTypes.NOTA_CREDITO_A,
+    VoucherTypes.RECIBO_A,
+  ],
+  B: [
+    VoucherTypes.FACTURA_B,
+    VoucherTypes.NOTA_DEBITO_B,
+    VoucherTypes.NOTA_CREDITO_B,
+    VoucherTypes.RECIBO_B,
+  ],
+  C: [
+    VoucherTypes.FACTURA_C,
+    VoucherTypes.NOTA_DEBITO_C,
+    VoucherTypes.NOTA_CREDITO_C,
+    VoucherTypes.RECIBO_C,
+  ],
+  M: [
+    VoucherTypes.FACTURA_M,
+    VoucherTypes.NOTA_DEBITO_M,
+    VoucherTypes.NOTA_CREDITO_M,
+    VoucherTypes.RECIBO_M,
+  ],
+};
+
 export interface IVoucher {
   CantReg: number;
   PtoVta: number;
@@ -22,6 +71,8 @@ export interface IVoucher {
   CanMisMonExt?: string;
   CondicionIVAReceptorId: number;
   CbtesAsoc?: ICbtesAsoc[];
+  /** Periodo asociado (NC/ND). Alternativa a CbtesAsoc cuando no se informa comprobante puntual. */
+  PeriodoAsoc?: IPeriodoAsoc | null;
   Tributos?: ITributo[];
   Iva?: IIva[];
   Opcionales?: IOpcional[];
@@ -42,6 +93,12 @@ export interface ICbtesAsoc {
   Nro: number;
   Cuit: string;
   CbteFch?: string;
+}
+
+/** Periodo asociado a NC/ND (YYYYMMDD). Requerido por ARCA si no se envía CbtesAsoc. */
+export interface IPeriodoAsoc {
+  FchDesde: string;
+  FchHasta: string;
 }
 
 export interface IComprador {

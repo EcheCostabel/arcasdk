@@ -27,7 +27,7 @@ El método principal para generar una factura y obtener el CAE.
 | `CbteDesde`  | number     | Número de comprobante desde                  |
 | `CbteHasta`  | number     | Número de comprobante hasta                  |
 | `CbteFch`    | string     | Fecha en formato `YYYYMMDD`                  |
-| `ImpTotal`   | number     | Importe total                                |
+| `ImpTotal`   | number     | Importe total. ARCA (10048) espera `ImpTotConc + ImpNeto + ImpOpEx + ImpTrib + ImpIVA` |
 | `ImpNeto`    | number     | Importe neto gravado                         |
 | `ImpIVA`     | number     | Importe IVA total                            |
 | `ImpTotConc` | number     | Importe no gravado                           |
@@ -38,6 +38,7 @@ El método principal para generar una factura y obtener el CAE.
 | `Iva`        | IVA[]      | Alícuotas de IVA aplicadas                   |
 | `Tributos`   | Tributo[]  | _(opcional)_ Tributos adicionales            |
 | `CbtesAsoc`  | CbteAsoc[] | _(opcional)_ Comprobantes asociados (NC/ND)  |
+| `PeriodoAsoc` | `{ FchDesde, FchHasta }` | _(opcional/nulo)_ Periodo asociado (NC/ND). Alternativa a `CbtesAsoc` |
 
 ### Tipos de Comprobante (`CbteTipo`)
 
@@ -46,15 +47,20 @@ El método principal para generar una factura y obtener el CAE.
 | 1      | Factura A                          |
 | 2      | Nota de Débito A                   |
 | 3      | Nota de Crédito A                  |
+| 4      | Recibo A                           |
 | 6      | Factura B                          |
-| 7      | Recibo B                           |
-| 8      | Nota de Débito B                   |
-| 9      | Nota de Crédito B                  |
+| 7      | Nota de Débito B                   |
+| 8      | Nota de Crédito B                  |
+| 9      | Recibo B                           |
 | 11     | Factura C                          |
-| 12     | Recibo C                           |
-| 13     | Nota de Débito C                   |
-| 14     | Nota de Crédito C                  |
+| 12     | Nota de Débito C                   |
+| 13     | Nota de Crédito C                  |
+| 15     | Recibo C                           |
+| 49     | Bienes Usados                      |
 | 51     | Factura M                          |
+| 52     | Nota de Débito M                   |
+| 53     | Nota de Crédito M                  |
+| 54     | Recibo M                           |
 | 81     | Tique Factura A                    |
 | 82     | Tique Factura B                    |
 | 83     | Tique                              |
@@ -212,12 +218,25 @@ Recupera los datos de un comprobante ya emitido.
 const voucherInfo = await arca.electronicBillingService.getVoucherInfo(1, 1, 6);
 // getVoucherInfo(nroComprobante, puntoVenta, tipoComprobante)
 
-if (voucherInfo) {
+const arcaErrors = voucherInfo?.errors?.err ?? [];
+const notFound = arcaErrors.some((e) => e.code === 602);
+
+if (notFound) {
+  console.log("El comprobante no existe.");
+} else if (arcaErrors.length > 0) {
+  // p. ej. 10202 / 10204: request inválido (número fuera de rango, etc.)
+  console.log("ARCA rechazó la consulta:", arcaErrors);
+} else if (voucherInfo?.codAutorizacion) {
   console.log("Datos del comprobante:", voucherInfo);
 } else {
-  console.log("El comprobante no existe.");
+  // respuesta vacía (sin ResultGet ni Errors)
+  console.log("Sin datos ni errores de ARCA.");
 }
 ```
+
+::: tip
+`null` ya no significa “no existe”. Cuando el comprobante no está en ARCA (error **602**) o el request es inválido (**10202**, **10204**, …), `getVoucherInfo` devuelve `{ errors }` para poder distinguirlos. Solo vuelve `null` si la respuesta no trae `ResultGet` ni `Errors`.
+:::
 
 ---
 
